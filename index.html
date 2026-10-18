@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>60 秒當沖挑戰</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1f2630; --line:#2d3643;
+    --text:#e6edf3; --muted:#8b98a8; --up:#ff4d5e; --down:#22c55e; --accent:#f5b83d;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;min-height:100vh}
+  .wrap{max-width:1100px;margin:0 auto;padding:16px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+  h1{font-size:22px;letter-spacing:1px}
+  h1 span{color:var(--accent)}
+  .hdr-right{display:flex;gap:10px;align-items:center}
+  .icon{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:8px 10px;font-size:16px;cursor:pointer}
+  .timer{font-size:28px;font-weight:800;font-variant-numeric:tabular-nums;padding:4px 14px;border-radius:10px;background:var(--panel);border:1px solid var(--line);min-width:96px;text-align:center}
+  .timer.warn{color:var(--up);animation:blink .5s infinite alternate}
+  @keyframes blink{to{opacity:.45}}
+  .grid{display:grid;grid-template-columns:1fr 330px;gap:12px}
+  @media(max-width:860px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+  .quote{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:10px}
+  .stock-name{font-size:18px;font-weight:700}
+  .stock-code{color:var(--muted);font-size:13px}
+  .price{font-size:34px;font-weight:800;font-variant-numeric:tabular-nums}
+  .chg{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
+  .up{color:var(--up)} .down{color:var(--down)} .flat{color:var(--text)}
+  .badge{font-size:12px;padding:3px 10px;border-radius:999px;font-weight:800;display:none}
+  .badge.limitup{display:inline-block;background:var(--up);color:#fff}
+  .badge.limitdown{display:inline-block;background:var(--down);color:#05240f}
+  canvas{width:100%;height:340px;display:block;border-radius:10px;background:#0b0f15}
+  @media(max-width:600px){canvas{height:260px}}
+  .news{margin-top:10px;min-height:50px;padding:12px;border-radius:10px;background:var(--panel2);border-left:4px solid var(--line);font-size:15px;line-height:1.5}
+  .news.bull{border-left-color:var(--up)} .news.bear{border-left-color:var(--down)} .news.rumor{border-left-color:var(--accent)}
+  .news .tag{font-size:12px;font-weight:800;margin-right:8px;padding:2px 7px;border-radius:6px;background:var(--line)}
+  .news.bull .tag{background:var(--up);color:#fff}
+  .news.bear .tag{background:var(--down);color:#05240f}
+  .news.rumor .tag{background:var(--accent);color:#2a1d00}
+  .news.flash{animation:flash .5s 3}
+  @keyframes flash{50%{background:#3a2f12}}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+  .stat{background:var(--panel2);border-radius:10px;padding:8px 10px}
+  .stat .k{font-size:12px;color:var(--muted)}
+  .stat .v{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+  .stat.wide{grid-column:span 2}
+  .stat.wide .v{font-size:22px}
+  .label{font-size:12px;color:var(--muted);margin-bottom:6px}
+  .qty{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+  .qty button{padding:8px 0;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-weight:700;cursor:pointer}
+  .qty button.on{border-color:var(--accent);color:var(--accent);background:#2a2412}
+  .trade{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .btn{padding:14px 0;border:none;border-radius:12px;font-size:19px;font-weight:800;color:#fff;cursor:pointer;transition:transform .05s,filter .15s}
+  .btn small{display:block;font-size:11px;font-weight:600;opacity:.75}
+  .btn:active{transform:scale(.96)}
+  .btn:disabled{filter:grayscale(1) brightness(.55);cursor:not-allowed}
+  .buy{background:var(--up)} .sell{background:var(--down)}
+  .hint{font-size:12px;color:var(--muted);margin-top:8px;text-align:center}
+  .log{margin-top:12px;max-height:190px;overflow:auto;font-size:13px}
+  .log .row{display:grid;grid-template-columns:44px 40px 1fr auto;gap:6px;padding:5px 2px;border-bottom:1px dashed var(--line);font-variant-numeric:tabular-nums}
+  .log .empty{color:var(--muted);text-align:center;padding:12px}
+  footer{color:var(--muted);font-size:12px;text-align:center;margin-top:14px}
+  .overlay{position:fixed;inset:0;background:rgba(5,8,12,.82);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
+  .overlay.show{display:flex}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;max-width:480px;width:100%;max-height:92vh;overflow:auto}
+  .modal h2{font-size:24px;margin-bottom:10px}
+  .modal p,.modal li{color:#c8d1db;line-height:1.7;font-size:14px}
+  .modal ul{padding-left:20px;margin:8px 0 14px}
+  .diffs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0 16px}
+  .diffs button{padding:10px 0;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-weight:700;cursor:pointer}
+  .diffs button small{display:block;font-size:11px;color:var(--muted);font-weight:500}
+  .diffs button.on{border-color:var(--accent);color:var(--accent)}
+  .start{width:100%;padding:14px;border:none;border-radius:12px;background:var(--accent);color:#2a1d00;font-size:18px;font-weight:800;cursor:pointer}
+  .records{margin-top:16px}
+  .records h3{font-size:14px;color:var(--muted);margin-bottom:6px}
+  .records .r{display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px dashed var(--line);font-variant-numeric:tabular-nums}
+  .cd{font-size:120px;font-weight:900;color:var(--accent);animation:pop .9s}
+  @keyframes pop{from{transform:scale(1.8);opacity:0}to{transform:scale(1);opacity:1}}
+  .result-ret{font-size:46px;font-weight:900;font-variant-numeric:tabular-nums;margin:6px 0}
+  .result-title{font-size:20px;font-weight:800;color:var(--accent);margin-bottom:12px}
+  .result-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:#2a3240;color:#fff;padding:10px 18px;border-radius:999px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:60}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .pop{position:fixed;font-weight:900;font-size:22px;pointer-events:none;z-index:40;animation:float 1.1s forwards}
+  @keyframes float{to{transform:translateY(-60px);opacity:0}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>⚡ 60 秒<span>當沖挑戰</span></h1>
+    <div class="hdr-right">
+      <button class="icon" id="muteBtn" title="音效開關">🔊</button>
+      <div class="timer" id="timer">60.0</div>
+    </div>
+  </header>
+
+  <div class="grid">
+    <section class="card">
+      <div class="quote">
+        <div>
+          <div class="stock-name" id="sName">—</div>
+          <div class="stock-code" id="sCode">—</div>
+        </div>
+        <div class="price" id="price">—</div>
+        <div class="chg" id="chg">—</div>
+        <span class="badge" id="badge"></span>
+      </div>
+      <canvas id="chart"></canvas>
+      <div class="news" id="news"></div>
+    </section>
+
+    <aside class="card">
+      <div class="stats">
+        <div class="stat wide"><div class="k">總資產</div><div class="v" id="total">—</div></div>
+        <div class="stat"><div class="k">現金</div><div class="v" id="cash">—</div></div>
+        <div class="stat"><div class="k">報酬率</div><div class="v" id="ret">—</div></div>
+        <div class="stat"><div class="k">持股（股）</div><div class="v" id="shares">—</div></div>
+        <div class="stat"><div class="k">持股均價</div><div class="v" id="avg">—</div></div>
+        <div class="stat"><div class="k">未實現損益</div><div class="v" id="unreal">—</div></div>
+        <div class="stat"><div class="k">已實現損益</div><div class="v" id="realized">—</div></div>
+      </div>
+      <div class="label">下單股數</div>
+      <div class="qty" id="qty">
+        <button data-q="100" class="on">100</button>
+        <button data-q="500">500</button>
+        <button data-q="1000">1000</button>
+        <button data-q="all">全部</button>
+      </div>
+      <div class="trade">
+        <button class="btn buy" id="buyBtn" disabled>買進<small>B 鍵</small></button>
+        <button class="btn sell" id="sellBtn" disabled>賣出<small>S 鍵</small></button>
+      </div>
+      <div class="hint">快捷鍵：B 買進 ／ S 賣出 ／ 1～4 切換股數</div>
+      <div class="log" id="log"></div>
+    </aside>
+  </div>
+  <footer>股價與新聞皆為程式隨機模擬，與真實市場無關，僅供娛樂。紅漲綠跌採台灣慣例。</footer>
+</div>
+
+<!-- 開始畫面 -->
+<div class="overlay show" id="startModal">
+  <div class="modal">
+    <h2>⚡ 60 秒當沖挑戰</h2>
+    <p>你有 <b>100,000 元</b> 虛擬資金和 60 秒。股價每 0.25 秒跳動一次，低買高賣，看你能賺多少！</p>
+    <ul>
+      <li>漲跌幅限制 ±10%（漲停／跌停）</li>
+      <li>買賣手續費 0.1425%（最低 20 元），賣出另收當沖證交稅 0.15%</li>
+      <li>隨機出現<b style="color:var(--up)">利多</b>、<b style="color:var(--down)">利空</b>新聞；<b style="color:var(--accent)">傳聞</b>有一半機率是假消息</li>
+      <li>時間到會以收盤價自動賣出所有持股</li>
+    </ul>
+    <div class="label">選擇難度</div>
+    <div class="diffs" id="diffs">
+      <button data-d="easy">新手<small>波動小</small></button>
+      <button data-d="normal" class="on">普通<small>剛剛好</small></button>
+      <button data-d="hard">地獄<small>大起大落</small></button>
+    </div>
+    <button class="start" id="startBtn">開始交易（空白鍵）</button>
+    <div class="records" id="recordsStart"></div>
+  </div>
+</div>
+
+<!-- 倒數 -->
+<div class="overlay" id="countdown"><div class="cd" id="cdNum">3</div></div>
+
+<!-- 結算 -->
+<div class="overlay" id="resultModal">
+  <div class="modal" style="text-align:center">
+    <h2>🔔 收盤結算</h2>
+    <div class="result-ret" id="rRet">0%</div>
+    <div class="result-title" id="rTitle"></div>
+    <div class="result-grid" style="text-align:left">
+      <div class="stat"><div class="k">最終資產</div><div class="v" id="rTotal"></div></div>
+      <div class="stat"><div class="k">損益</div><div class="v" id="rPnl"></div></div>
+      <div class="stat"><div class="k">交易次數</div><div class="v" id="rTrades"></div></div>
+      <div class="stat"><div class="k">賣出勝率</div><div class="v" id="rWin"></div></div>
+      <div class="stat"><div class="k">付出手續費＋稅</div><div class="v" id="rFees"></div></div>
+      <div class="stat"><div class="k">難度</div><div class="v" id="rDiff"></div></div>
+    </div>
+    <button class="start" id="againBtn">再玩一次</button>
+    <div class="records" id="recordsEnd" style="text-align:left"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const TICK_MS = 250, TOTAL = 240, START_CASH = 100000;
+const FEE = 0.001425, MIN_FEE = 20, TAX = 0.0015;
+const UP = '#ff4d5e', DOWN = '#22c55e', ACCENT = '#f5b83d';
+const DIFF = {
+  easy:   { label:'新手', sigma:.0035, ev:.025, str:.004 },
+  normal: { label:'普通', sigma:.006,  ev:.035, str:.006 },
+  hard:   { label:'地獄', sigma:.010,  ev:.05,  str:.009 }
+};
+const STOCKS = [
+  { name:'宇宙半導體', code:'9527' }, { name:'珍奶科技', code:'5566' },
+  { name:'懶人航運', code:'7777' }, { name:'貓咪生技', code:'3141' },
+  { name:'雞排金控', code:'1688' }, { name:'外星電動車', code:'8964' }
+];
+const NEWS = {
+  bull: ['{n} 接獲國際大廠超大訂單！','{n} 宣布發放特別股利','外資大舉買超 {n}','{n} 新產品發表會好評如潮','{n} 季營收創歷史新高'],
+  bear: ['{n} 工廠傳出停電意外','{n} 董事長突然宣布退休','外資大舉賣超 {n}','{n} 財報不如預期','{n} 主要客戶砍單'],
+  rumor:['網路傳聞 {n} 將被併購？','鄉民說 {n} 拿到神秘大單？','傳聞 {n} 執行長被調查？','社群瘋傳 {n} 要減資？']
+};
+
+let S = null, diff = 'normal', qtyMode = 100, timer = null, muted = false;
+
+/* ---------- 工具 ---------- */
+const fmt = (n, d = 0) => n.toLocaleString('zh-TW', { minimumFractionDigits:d, maximumFractionDigits:d });
+const signed = (n, d = 0) => (n > 0 ? '+' : '') + fmt(n, d);
+const cls = n => n > 0 ? 'up' : n < 0 ? 'down' : 'flat';
+const r05 = p => Math.round(p * 20) / 20;
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+function gauss(){ let u = 0, v = 0; while(!u) u = Math.random(); while(!v) v = Math.random(); return Math.sqrt(-2*Math.log(u)) * Math.cos(2*Math.PI*v); }
+const feeOf = amt => Math.max(MIN_FEE, Math.round(amt * FEE));
+
+let actx = null;
+function beep(f, dur = .08, type = 'sine', vol = .06){
+  if (muted) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.value = f; g.gain.value = vol;
+    o.connect(g); g.connect(actx.destination);
+    o.start(); g.gain.exponentialRampToValueAtTime(.0001, actx.currentTime + dur);
+    o.stop(actx.currentTime + dur);
+  } catch(e) {}
+}
+let toastT;
+function toast(msg){ const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 1400); }
+function popText(text, color, el){
+  const r = el.getBoundingClientRect(), d = document.createElement('div');
+  d.className = 'pop'; d.textContent = text; d.style.color = color;
+  d.style.left = (r.left + r.width/2 - 40) + 'px'; d.style.top = (r.top - 10) + 'px';
+  document.body.appendChild(d); setTimeout(() => d.remove(), 1100);
+}
+
+/* ---------- 遊戲狀態 ---------- */
+function newGame(){
+  const st = pick(STOCKS);
+  const open = r05(60 + Math.random() * 140);
+  S = {
+    stock:st, open, price:open, hist:[open], tick:0,
+    upLim: Math.floor(open*1.1*20)/20, downLim: Math.ceil(open*0.9*20)/20,
+    cash:START_CASH, shares:0, avg:0, realized:0, fees:0,
+    trades:[], log:[], event:null, cooldown:16, sells:0, wins:0, running:false
+  };
+  $('sName').textContent = st.name;
+  $('sCode').textContent = st.code + '．開盤 ' + fmt(open, 2);
+  setNews(null); renderLog(); updateUI(); draw();
+}
+
+function setNews(ev, extra){
+  const n = $('news');
+  n.className = 'news';
+  if (!ev){ n.innerHTML = '<span style="color:var(--muted)">📰 市場消息會顯示在這裡，留意利多與利空！</span>'; return; }
+  const tag = ev.type === 'bull' ? '利多' : ev.type === 'bear' ? '利空' : '傳聞';
+  n.classList.add(ev.type);
+  n.innerHTML = `<span class="tag">${tag}</span>${ev.text}${extra ? `<br><b style="color:var(--accent)">${extra}</b>` : ''}`;
+  void n.offsetWidth; n.classList.add('flash');
+}
+
+function maybeEvent(){
+  const d = DIFF[diff];
+  if (S.event){
+    const e = S.event; e.left--;
+    if (e.fake && e.left === e.flipAt){ e.drift = -e.drift * 1.7; setNews(e, '⚠️ 事後證實：假消息！股價反轉'); beep(220, .2, 'sawtooth', .05); }
+    if (e.left <= 0){ S.event = null; S.cooldown = 14; }
+    return;
+  }
+  if (S.cooldown > 0){ S.cooldown--; return; }
+  if (S.tick > TOTAL - 16 || Math.random() > d.ev) return;
+  const r = Math.random();
+  const type = r < .38 ? 'bull' : r < .76 ? 'bear' : 'rumor';
+  const dir = type === 'bull' ? 1 : type === 'bear' ? -1 : (Math.random() < .5 ? 1 : -1);
+  const len = 12 + Math.floor(Math.random() * 10);
+  const e = { type, text: pick(NEWS[type]).replace('{n}', S.stock.name), drift: dir * d.str * (.7 + Math.random()*.6), left: len, fake:false };
+  if (type === 'rumor'){
+    e.drift *= .8;
+    if (Math.random() < .5){ e.fake = true; e.left = len + 6; e.flipAt = e.left - 5; }
+  }
+  S.event = e; setNews(e); beep(dir > 0 ? 880 : 330, .15, 'triangle', .06);
+}
+
+function step(){
+  S.tick++;
+  maybeEvent();
+  const d = DIFF[diff];
+  const drift = S.event ? S.event.drift : 0;
+  const rev = .015 * Math.log(S.open / S.price);
+  let p = S.price * Math.exp(drift + rev + d.sigma * gauss());
+  p = Math.min(S.upLim, Math.max(S.downLim, r05(p)));
+  S.price = p; S.hist.push(p);
+  const left = (TOTAL - S.tick) * TICK_MS / 1000;
+  if (left <= 5 && left > 0 && S.tick % 4 === 0) beep(1000, .05, 'square', .03);
+  updateUI(); draw();
+  if (S.tick >= TOTAL) endGame();
+}
+
+/* ---------- 交易 ---------- */
+function buy(){
+  if (!S || !S.running) return;
+  const p = S.price;
+  let q = qtyMode === 'all' ? Math.floor(S.cash / (p * (1 + FEE))) : qtyMode;
+  while (q > 0 && p*q + feeOf(p*q) > S.cash) q--;
+  if (q <= 0 || (qtyMode !== 'all' && q < qtyMode)){ toast('💸 現金不足！'); beep(160, .15, 'square', .04); return; }
+  const cost = p*q, fee = feeOf(cost);
+  S.avg = (S.avg * S.shares + cost + fee) / (S.shares + q);
+  S.shares += q; S.cash -= cost + fee; S.fees += fee;
+  S.trades.push({ tick:S.tick, price:p, type:'B' });
+  addLog('買', q, p, null);
+  beep(660, .08); updateUI(); draw();
+}
+function sell(forced){
+  if (!S || (!S.running && !forced)) return;
+  if (S.shares <= 0){ if (!forced){ toast('📭 你沒有持股可以賣'); beep(160, .15, 'square', .04); } return; }
+  const p = S.price;
+  let q = forced || qtyMode === 'all' ? S.shares : Math.min(qtyMode, S.shares);
+  const amt = p*q, fee = feeOf(amt), tax = Math.round(amt * TAX);
+  const net = amt - fee - tax, pnl = net - S.avg * q;
+  S.cash += net; S.shares -= q; S.realized += pnl; S.fees += fee + tax;
+  S.sells++; if (pnl > 0) S.wins++;
+  if (S.shares === 0) S.avg = 0;
+  S.trades.push({ tick:S.tick, price:p, type:'S' });
+  addLog(forced ? '平倉' : '賣', q, p, pnl);
+  if (!forced){ popText(signed(Math.round(pnl)), pnl >= 0 ? UP : DOWN, $('sellBtn')); beep(pnl >= 0 ? 990 : 300, .1); }
+  updateUI(); draw();
+}
+function addLog(act, q, p, pnl){
+  const sec = (S.tick * TICK_MS / 1000).toFixed(1) + 's';
+  S.log.unshift({ sec, act, q, p, pnl }); renderLog();
+}
+function renderLog(){
+  const el = $('log');
+  if (!S || !S.log.length){ el.innerHTML = '<div class="empty">尚無交易紀錄</div>'; return; }
+  el.innerHTML = S.log.map(l => `<div class="row"><span style="color:var(--muted)">${l.sec}</span><b class="${l.act === '買' ? 'up' : 'down'}">${l.act}</b><span>${fmt(l.q)} 股 @ ${fmt(l.p, 2)}</span><span class="${l.pnl == null ? '' : cls(l.pnl)}">${l.pnl == null ? '' : signed(Math.round(l.pnl))}</span></div>`).join('');
+}
+
+/* ---------- 畫面 ---------- */
+function setV(id, text, c){ const e = $(id); e.textContent = text; e.className = 'v' + (c ? ' ' + c : ''); }
+function updateUI(){
+  const p = S.price, ch = p - S.open, pct = ch / S.open * 100;
+  $('price').textContent = fmt(p, 2); $('price').className = 'price ' + cls(ch);
+  $('chg').textContent = `${ch > 0 ? '▲' : ch < 0 ? '▼' : ''} ${fmt(Math.abs(ch), 2)} (${signed(pct, 2)}%)`;
+  $('chg').className = 'chg ' + cls(ch);
+  const b = $('badge');
+  b.className = 'badge' + (p >= S.upLim ? ' limitup' : p <= S.downLim ? ' limitdown' : '');
+  b.textContent = p >= S.upLim ? '漲停' : p <= S.downLim ? '跌停' : '';
+  const left = Math.max(0, (TOTAL - S.tick) * TICK_MS / 1000);
+  $('timer').textContent = left.toFixed(1);
+  $('timer').classList.toggle('warn', S.running && left <= 10);
+  const unreal = S.shares ? (p - S.avg) * S.shares : 0;
+  const total = S.cash + p * S.shares, ret = (total - START_CASH) / START_CASH * 100;
+  setV('total', fmt(Math.round(total)), cls(total - START_CASH));
+  setV('cash', fmt(Math.round(S.cash)));
+  setV('ret', signed(ret, 2) + '%', cls(ret));
+  setV('shares', fmt(S.shares));
+  setV('avg', S.shares ? fmt(S.avg, 2) : '—');
+  setV('unreal', signed(Math.round(unreal)), cls(unreal));
+  setV('realized', signed(Math.round(S.realized)), cls(S.realized));
+  $('buyBtn').disabled = $('sellBtn').disabled = !S.running;
+}
+
+const cv = $('chart'), ctx = cv.getContext('2d');
+function resize(){
+  const r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  cv.width = r.width * dpr; cv.height = r.height * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); draw();
+}
+function draw(){
+  if (!S) return;
+  const W = cv.clientWidth, H = cv.clientHeight;
+  ctx.clearRect(0, 0, W, H);
+  const pl = 8, pr = 58, pt = 14, pb = 22, cw = W - pl - pr, ch = H - pt - pb;
+  let lo = Math.min(...S.hist), hi = Math.max(...S.hist);
+  if (S.shares){ lo = Math.min(lo, S.avg); hi = Math.max(hi, S.avg); }
+  const mid = (lo + hi) / 2, span = Math.max(hi - lo, S.open * .03) * 1.2;
+  lo = mid - span/2; hi = mid + span/2;
+  const X = i => pl + cw * i / TOTAL, Y = p => pt + ch * (1 - (p - lo) / (hi - lo));
+  const inY = y => y >= pt && y <= pt + ch;
+
+  ctx.font = '11px system-ui'; ctx.lineWidth = 1;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  for (let k = 0; k <= 4; k++){
+    const p = lo + (hi - lo) * k / 4, y = Y(p);
+    ctx.strokeStyle = '#1c2430'; ctx.beginPath(); ctx.moveTo(pl, y); ctx.lineTo(pl + cw, y); ctx.stroke();
+    ctx.fillStyle = '#6b7787'; ctx.fillText(p.toFixed(2), pl + cw + 6, y);
+  }
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  [15, 30, 45].forEach(s => { const x = X(s * 1000 / TICK_MS); ctx.strokeStyle = '#161d27'; ctx.beginPath(); ctx.moveTo(x, pt); ctx.lineTo(x, pt + ch); ctx.stroke(); ctx.fillStyle = '#6b7787'; ctx.fillText(s + 's', x, H - pb + 5); });
+
+  const hline = (p, color, label, right) => {
+    const y = Y(p); if (!inY(y)) return;
+    ctx.setLineDash([5, 4]); ctx.strokeStyle = color; ctx.beginPath(); ctx.moveTo(pl, y); ctx.lineTo(pl + cw, y); ctx.stroke(); ctx.setLineDash([]);
+    ctx.font = '11px system-ui'; ctx.fillStyle = color;
+    ctx.textAlign = right ? 'right' : 'left'; ctx.textBaseline = right ? 'top' : 'bottom';
+    ctx.fillText(label, right ? pl + cw - 4 : pl + 4, right ? y + 3 : y - 2);
+  };
+  hline(S.open, '#8b98a8', '開盤 ' + S.open.toFixed(2), false);
+  if (S.shares) hline(S.avg, ACCENT, '我的均價 ' + S.avg.toFixed(2), true);
+
+  const col = S.price >= S.open ? UP : DOWN;
+  const n = S.hist.length;
+  ctx.beginPath(); S.hist.forEach((p, i) => i ? ctx.lineTo(X(i), Y(p)) : ctx.moveTo(X(i), Y(p)));
+  const g = ctx.createLinearGradient(0, pt, 0, pt + ch);
+  g.addColorStop(0, col + '55'); g.addColorStop(1, col + '00');
+  ctx.lineTo(X(n - 1), pt + ch); ctx.lineTo(X(0), pt + ch); ctx.closePath(); ctx.fillStyle = g; ctx.fill();
+  ctx.beginPath(); S.hist.forEach((p, i) => i ? ctx.lineTo(X(i), Y(p)) : ctx.moveTo(X(i), Y(p)));
+  ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.stroke(); ctx.lineWidth = 1;
+
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = 'bold 10px system-ui';
+  S.trades.forEach(t => {
+    const x = X(t.tick), y = Y(t.price);
+    ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI * 2); ctx.fillStyle = t.type === 'B' ? UP : DOWN; ctx.fill();
+    ctx.strokeStyle = '#0b0f15'; ctx.lineWidth = 2; ctx.stroke(); ctx.lineWidth = 1;
+    ctx.fillStyle = '#fff'; ctx.fillText(t.type, x, y + .5);
+  });
+  const lx = X(n - 1), ly = Y(S.price);
+  ctx.beginPath(); ctx.arc(lx, ly, 4, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
+  if (S.running){ ctx.beginPath(); ctx.arc(lx, ly, 4 + (S.tick % 4) * 2, 0, Math.PI * 2); ctx.strokeStyle = col + '88'; ctx.stroke(); }
+}
+
+/* ---------- 流程 ---------- */
+function startGame(){
+  if (S && S.running) return;
+  $('startModal').classList.remove('show'); $('resultModal').classList.remove('show');
+  newGame();
+  const cd = $('countdown'), num = $('cdNum'); let c = 3;
+  cd.classList.add('show');
+  const show = () => { num.textContent = c; num.style.animation = 'none'; void num.offsetWidth; num.style.animation = ''; beep(c ? 520 : 1040, .12); };
+  show();
+  const iv = setInterval(() => {
+    c--;
+    if (c > 0){ show(); return; }
+    clearInterval(iv); cd.classList.remove('show'); beep(1040, .15);
+    S.running = true; updateUI();
+    timer = setInterval(step, TICK_MS);
+  }, 800);
+}
+function titleOf(ret, trades){
+  if (trades === 0) return '🧘 觀望大師：一張都沒買';
+  if (ret <= -20) return '🥬 韭菜收割機的最愛';
+  if (ret <= -5) return '📉 繳學費的散戶';
+  if (ret < 0) return '😅 差一點就回本';
+  if (ret < 3) return '🙂 穩穩小賺';
+  if (ret < 8) return '📈 當沖高手';
+  if (ret < 15) return '🦈 市場主力';
+  return '👑 股神降臨';
+}
+function loadRecords(){ try { return JSON.parse(localStorage.getItem('daytrade_records') || '[]'); } catch(e){ return []; } }
+function saveRecord(rec){
+  const list = loadRecords(); list.push(rec); list.sort((a, b) => b.ret - a.ret);
+  try { localStorage.setItem('daytrade_records', JSON.stringify(list.slice(0, 5))); } catch(e) {}
+}
+function renderRecords(id){
+  const list = loadRecords();
+  $(id).innerHTML = '<h3>🏆 個人最佳紀錄（前 5 名）</h3>' + (list.length
+    ? list.map((r, i) => `<div class="r"><span>${i + 1}. ${r.diff}｜${r.stock}</span><span class="${cls(r.ret)}">${signed(r.ret, 2)}%</span></div>`).join('')
+    : '<div class="r" style="color:var(--muted)">還沒有紀錄，來當第一位股神吧！</div>');
+}
+function endGame(){
+  clearInterval(timer); S.running = false;
+  const trades = S.trades.length;
+  sell(true);
+  updateUI(); draw();
+  const total = S.cash, ret = (total - START_CASH) / START_CASH * 100;
+  if (trades > 0) saveRecord({ ret: Math.round(ret * 100) / 100, diff: DIFF[diff].label, stock: S.stock.name });
+  $('rRet').textContent = signed(ret, 2) + '%'; $('rRet').className = 'result-ret ' + cls(ret);
+  $('rTitle').textContent = titleOf(ret, trades);
+  setV('rTotal', fmt(Math.round(total)));
+  setV('rPnl', signed(Math.round(total - START_CASH)), cls(total - START_CASH));
+  setV('rTrades', trades + ' 筆');
+  setV('rWin', S.sells ? Math.round(S.wins / S.sells * 100) + '%' : '—');
+  setV('rFees', fmt(Math.round(S.fees)));
+  setV('rDiff', DIFF[diff].label);
+  renderRecords('recordsEnd');
+  beep(ret >= 0 ? 784 : 262, .3, 'triangle', .07);
+  setTimeout(() => $('resultModal').classList.add('show'), 500);
+}
+
+/* ---------- 事件綁定 ---------- */
+$('buyBtn').onclick = buy;
+$('sellBtn').onclick = () => sell(false);
+$('startBtn').onclick = startGame;
+$('againBtn').onclick = () => { $('resultModal').classList.remove('show'); renderRecords('recordsStart'); $('startModal').classList.add('show'); };
+$('muteBtn').onclick = () => { muted = !muted; $('muteBtn').textContent = muted ? '🔇' : '🔊'; };
+document.querySelectorAll('#qty button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#qty button').forEach(x => x.classList.remove('on'));
+  b.classList.add('on'); qtyMode = b.dataset.q === 'all' ? 'all' : +b.dataset.q;
+});
+document.querySelectorAll('#diffs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#diffs button').forEach(x => x.classList.remove('on'));
+  b.classList.add('on'); diff = b.dataset.d;
+});
+document.addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (k === ' ' && $('startModal').classList.contains('show')){ e.preventDefault(); startGame(); return; }
+  if (!S || !S.running) return;
+  if (k === 'b' || k === 'arrowup'){ e.preventDefault(); buy(); }
+  else if (k === 's' || k === 'arrowdown'){ e.preventDefault(); sell(false); }
+  else if ('1234'.includes(k) && k.length === 1){ document.querySelectorAll('#qty button')[+k - 1].click(); }
+});
+window.addEventListener('resize', resize);
+
+newGame(); resize(); renderRecords('recordsStart');
+</script>
+</body>
+</html>
